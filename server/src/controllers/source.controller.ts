@@ -1,9 +1,9 @@
 import type { Request, Response } from "express";
 import { ValidationError } from "../types/app-error.js";
 import { getZodFieldErrors } from "../utils/zod-error.js";
-import { createSourceSchema, listSourcesQuerySchema, sourceIdParamSchema, bulkDeleteSourcesSchema,  } from "../validators/source.validator.js";
+import { createSourceSchema, listSourcesQuerySchema, sourceIdParamSchema, bulkDeleteSourcesSchema, importWebsiteSchema, importYoutubeSchema,  } from "../validators/source.validator.js";
 import { workspaceIdParamSchema } from "../validators/workspace.validator.js";
-import { createTextOrMarkdownSource, listSourcesForWorkspace, bulkDeleteSourcesForWorkspace, deleteSourceForWorkspace, getSourceForWorkspace } from "../services/source.services.js";
+import { createTextOrMarkdownSource, listSourcesForWorkspace, bulkDeleteSourcesForWorkspace, deleteSourceForWorkspace, getSourceForWorkspace, importWebsiteSource, uploadPdfSource, importYoutubeSource } from "../services/source.services.js";
 
 function parseWorkspaceId(params: Request["params"]) {
     const parsed = workspaceIdParamSchema.safeParse(params);
@@ -122,4 +122,46 @@ export async function bulkDeleteSources(req: Request, res: Response) {
         input.sourceIds,
     );
     res.status(204).send();
+}
+
+export async function importWebsite(req: Request, res: Response) {
+    const { workspaceId } = workspaceIdParamSchema.parse(req.params);
+    const input = importWebsiteSchema.parse(req.body);
+    const source = await importWebsiteSource(
+        workspaceId,
+        req.session.user.id,
+        input,
+    );
+    res.status(201).json(source);
+}
+
+export async function uploadPdf(req: Request, res: Response) {
+    const { workspaceId } = workspaceIdParamSchema.parse(req.params);
+
+    if (!req.file) {
+        throw new ValidationError("PDF file is required");
+    }
+
+    const title =
+        typeof req.body.title === "string" ? req.body.title : undefined;
+
+    const source = await uploadPdfSource(
+        workspaceId,
+        req.session.user.id,
+        req.file,
+        title,
+    );
+
+    res.status(201).json(source);
+}
+
+export async function importYoutube(req: Request, res: Response) {
+    const { workspaceId } = workspaceIdParamSchema.parse(req.params);
+    const input = importYoutubeSchema.parse(req.body);
+    const source = await importYoutubeSource(
+        workspaceId,
+        req.session.user.id,
+        input,
+    );
+    res.status(201).json(source);
 }
